@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Extractor | Extract Emails from Any File</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #1a1a24;
+            --accent-cyan: #00f5d4;
+            --accent-magenta: #f72585;
+            --accent-yellow: #fee440;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --border-color: #2a2a3a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Mono', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated background grid */
+        .bg-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 245, 212, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 245, 212, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 3rem;
+            font-weight: 800;
+            letter-spacing: -2px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-magenta));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            animation: glow 3s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { filter: drop-shadow(0 0 20px rgba(0, 245, 212, 0.3)); }
+            50% { filter: drop-shadow(0 0 40px rgba(247, 37, 133, 0.4)); }
+        }
+
+        .tagline {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* Upload Zone */
+        .upload-zone {
+            background: var(--bg-card);
+            border: 2px dashed var(--border-color);
+            border-radius: 20px;
+            padding: 60px 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-zone::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(0, 245, 212, 0.05), rgba(247, 37, 133, 0.05));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .upload-zone:hover::before,
+        .upload-zone.dragover::before {
+            opacity: 1;
+        }
+
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: var(--accent-cyan);
+            transform: translateY(-5px);
+            box-shadow: 0 20px 60px rgba(0, 245, 212, 0.1);
+        }
+
+        .upload-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-magenta));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .upload-icon svg {
+            width: 40px;
+            height: 40px;
+            stroke: var(--bg-primary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .upload-text h3 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .upload-text p {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .upload-text .supported {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: var(--bg-secondary);
+            border-radius: 30px;
+            display: inline-block;
+            font-size: 0.75rem;
+            color: var(--accent-cyan);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        /* File Info */
+        .file-info {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background: var(--bg-secondary);
+            border-radius: 15px;
+            border-left: 4px solid var(--accent-cyan);
+        }
+
+        .file-info.show {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .file-icon {
+            width: 50px;
+            height: 50px;
+            background: var(--bg-card);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .file-icon svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--accent-magenta);
+            fill: none;
+        }
+
+        .file-details {
+            flex: 1;
+        }
+
+        .file-details .name {
+            font-weight: 700;
+            margin-bottom: 5px;
+            word-break: break-all;
+        }
+
+        .file-details .size {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        /* Extract Button */
+        .extract-btn {
+            display: none;
+            width: 100%;
+            margin-top: 30px;
+            padding: 20px 40px;
+            font-family: 'Syne', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--bg-primary);
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-yellow));
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .extract-btn.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        .extract-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(0, 245, 212, 0.3);
+        }
+
+        .extract-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Processing */
+        .processing {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .processing.show {
+            display: block;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid var(--bg-card);
+            border-top-color: var(--accent-cyan);
+            border-right-color: var(--accent-magenta);
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Results */
+        .results {
+            display: none;
+            margin-top: 40px;
+        }
+
+        .results.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .results-header h2 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .email-count {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-magenta));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            padding: 12px 24px;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.85rem;
+            font-weight: 700;
+            border: 2px solid;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .copy-btn {
+            background: transparent;
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+
+        .copy-btn:hover {
+            background: var(--accent-cyan);
+            color: var(--bg-primary);
+        }
+
+        .download-btn {
+            background: var(--accent-magenta);
+            border-color: var(--accent-magenta);
+            color: var(--text-primary);
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(247, 37, 133, 0.3);
+        }
+
+        /* Email List */
+        .email-list {
+            background: var(--bg-card);
+            border-radius: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .email-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .email-list::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+            border-radius: 4px;
+        }
+
+        .email-list::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        .email-list::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-cyan);
+        }
+
+        .email-item {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+            transition: background 0.2s ease;
+        }
+
+        .email-item:last-child {
+            border-bottom: none;
+        }
+
+        .email-item:hover {
+            background: var(--bg-secondary);
+        }
+
+        .email-number {
+            width: 40px;
+            height: 40px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: var(--accent-cyan);
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .email-address {
+            flex: 1;
+            word-break: break-all;
+            font-size: 0.95rem;
+        }
+
+        .copy-single {
+            width: 36px;
+            height: 36px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .copy-single:hover {
+            background: var(--accent-cyan);
+            border-color: var(--accent-cyan);
+        }
+
+        .copy-single svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--text-secondary);
+            fill: none;
+        }
+
+        .copy-single:hover svg {
+            stroke: var(--bg-primary);
+        }
+
+        /* No Results */
+        .no-results {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .no-results svg {
+            width: 80px;
+            height: 80px;
+            stroke: var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--accent-cyan);
+            color: var(--bg-primary);
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-weight: 700;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            margin-top: 60px;
+            padding-top: 30px;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        footer a {
+            color: var(--accent-cyan);
+            text-decoration: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .logo {
+                font-size: 2rem;
+            }
+
+            .upload-zone {
+                padding: 40px 20px;
+            }
+
+            .results-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .action-btns {
+                width: 100%;
+            }
+
+            .action-btn {
+                flex: 1;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+
+    <div class="container">
+        <header>
+            <h1 class="logo">EMAIL EXTRACTOR</h1>
+            <p class="tagline">Extract emails from any file instantly</p>
+        </header>
+
+        <div class="upload-zone" id="uploadZone">
+            <div class="upload-icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+            </div>
+            <div class="upload-text">
+                <h3>Drop your file here</h3>
+                <p>or click to browse</p>
+                <span class="supported">TXT • CSV • JSON • HTML • XML • LOG • MD • ANY TEXT FILE</span>
+            </div>
+            <input type="file" id="fileInput" accept="*/*">
+        </div>
+
+        <div class="file-info" id="fileInfo">
+            <div class="file-icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                </svg>
+            </div>
+            <div class="file-details">
+                <div class="name" id="fileName"></div>
+                <div class="size" id="fileSize"></div>
+            </div>
+        </div>
+
+        <button class="extract-btn" id="extractBtn">⚡ Extract Emails</button>
+
+        <div class="processing" id="processing">
+            <div class="spinner"></div>
+            <p>Scanning for emails...</p>
+        </div>
+
+        <div class="results" id="results">
+            <div class="results-header">
+                <h2>Found <span class="email-count" id="emailCount">0</span> emails</h2>
+                <div class="action-btns">
+                    <button class="action-btn copy-btn" id="copyAll">Copy All</button>
+                    <button class="action-btn download-btn" id="downloadCsv">Download CSV</button>
+                </div>
+            </div>
+            <div class="email-list" id="emailList"></div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">Copied to clipboard!</div>
+
+    <footer>
+        <p>Built with ❤️ for <a href="https://vemalresources.com">Vemals Optimum Global Resources</a></p>
+    </footer>
+
+    <script>
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const extractBtn = document.getElementById('extractBtn');
+        const processing = document.getElementById('processing');
+        const results = document.getElementById('results');
+        const emailCount = document.getElementById('emailCount');
+        const emailList = document.getElementById('emailList');
+        const copyAll = document.getElementById('copyAll');
+        const downloadCsv = document.getElementById('downloadCsv');
+        const toast = document.getElementById('toast');
+
+        let extractedEmails = [];
+        let currentFile = null;
+
+        // Format file size
+        function formatSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Show toast notification
+        function showToast(message) {
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        // Extract emails using regex (same pattern as your Python script)
+        function extractEmails(text) {
+            const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+            const matches = text.match(emailRegex) || [];
+            // Remove duplicates and sort
+            return [...new Set(matches)].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+        }
+
+        // Handle file selection
+        function handleFile(file) {
+            currentFile = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = formatSize(file.size);
+            fileInfo.classList.add('show');
+            extractBtn.classList.add('show');
+            results.classList.remove('show');
+        }
+
+        // Click to upload
+        uploadZone.addEventListener('click', () => fileInput.click());
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        // Drag and drop
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        // Extract button click
+        extractBtn.addEventListener('click', () => {
+            if (!currentFile) return;
+
+            extractBtn.disabled = true;
+            processing.classList.add('show');
+            results.classList.remove('show');
+
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                setTimeout(() => {
+                    const text = e.target.result;
+                    extractedEmails = extractEmails(text);
+
+                    processing.classList.remove('show');
+                    extractBtn.disabled = false;
+                    
+                    displayResults();
+                }, 500); // Small delay for UX
+            };
+
+            reader.onerror = () => {
+                processing.classList.remove('show');
+                extractBtn.disabled = false;
+                showToast('Error reading file');
+            };
+
+            reader.readAsText(currentFile);
+        });
+
+        // Display results
+        function displayResults() {
+            emailCount.textContent = extractedEmails.length;
+            emailList.innerHTML = '';
+
+            if (extractedEmails.length === 0) {
+                emailList.innerHTML = `
+                    <div class="no-results">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="8" y1="12" x2="16" y2="12"/>
+                        </svg>
+                        <p>No emails found in this file</p>
+                    </div>
+                `;
+            } else {
+                extractedEmails.forEach((email, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'email-item';
+                    item.innerHTML = `
+                        <div class="email-number">${index + 1}</div>
+                        <div class="email-address">${email}</div>
+                        <button class="copy-single" data-email="${email}" title="Copy email">
+                            <svg viewBox="0 0 24 24">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                            </svg>
+                        </button>
+                    `;
+                    emailList.appendChild(item);
+                });
+
+                // Add copy handlers
+                document.querySelectorAll('.copy-single').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const email = e.currentTarget.dataset.email;
+                        navigator.clipboard.writeText(email);
+                        showToast(`Copied: ${email}`);
+                    });
+                });
+            }
+
+            results.classList.add('show');
+        }
+
+        // Copy all emails
+        copyAll.addEventListener('click', () => {
+            if (extractedEmails.length === 0) return;
+            navigator.clipboard.writeText(extractedEmails.join('\n'));
+            showToast(`Copied ${extractedEmails.length} emails!`);
+        });
+
+        // Download CSV
+        downloadCsv.addEventListener('click', () => {
+            if (extractedEmails.length === 0) return;
+
+            const csvContent = 'Email\n' + extractedEmails.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'extracted_emails.csv';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showToast('CSV downloaded!');
+        });
+    </script>
+</body>
+</html>
